@@ -7,194 +7,256 @@
 #include <string>
 #include <map>
 
-#define DECLARE_TYPE(T) \
+#include <stdexcept>
+
+#include <functional>
+
+#define DECLARE_TYPE(Type) \
     const static uint8_t TYPE;
 
-class frame_container;
+namespace frame {
+    /**
+     * The frame container.
+     */
+    class frame_container {
+    private:
+        uint8_t type;
+        std::string payload;
+    public:
+        frame_container();
+        frame_container(uint8_t type, std::string payload);
 
-typedef void (*frame_handle_function)(void*, frame_container&);
-typedef std::map<uint8_t, frame_handle_function> handle_map;
+        uint8_t get_type();
+        std::string get_payload();
 
-void invoke_frame_handler(void*, handle_map& handlers, frame_container& container);
+        MSGPACK_DEFINE(type, payload)
+    };
 
-/**
- * Receive a frame container.
- */
-void receive_frame_container(zmq::socket_t&, frame_container*);
+    #define DECLARE_TEMPLATE(Id, Class) \
+        const uint8_t Class::TYPE = Id; \
+        template void convert_frame<Class>(frame_container*, Class*); \
+        template void send_frame<Class>(zmq::socket_t&, Class&);
 
-/**
- * Convert a container into a frame.
- */
-template<typename T>
-void convert_frame(frame_container* container, T*);
+    typedef std::function<void(frame_container&)> frame_handle_function;
+    typedef std::map<uint8_t, frame_handle_function> handle_map;
 
-/**
- * Send a serialized reply on zmq socket.
- */
-template<typename T>
-void send_frame(zmq::socket_t&, T&);
+    class invoke_exception : public std::runtime_error
+    {
+    public:
+        explicit invoke_exception(const char*);
+    };
 
-/**
- * The frame container.
- */
-class frame_container {
-private:
-    uint8_t type;
-    std::string payload;
-public:
-    frame_container();
-    frame_container(uint8_t type, std::string payload);
+    class frame_exception : public std::runtime_error
+    {
+    public:
+        explicit frame_exception(const char*);
+    };
 
-    uint8_t get_type();
-    std::string get_payload();
+    /**
+     * Receive a frame container.
+     */
+    void receive_frame_container(zmq::socket_t&, frame_container*);
 
-    MSGPACK_DEFINE(type, payload)
-};
+    /**
+     * Convert a container into a frame.
+     */
+    template<typename T>
+    void convert_frame(frame_container* container, T*);
 
-class Ping
-{
-public:
-    int sequence;
+    /**
+     * Send a serialized reply on zmq socket.
+     */
+    template<typename T>
+    void send_frame(zmq::socket_t&, T&);
 
-    MSGPACK_DEFINE(sequence)
-    DECLARE_TYPE(Ping)
-};
+    /**
+     * Convenience temlpate to invoke frame handler from a map of handlers.
+     */
+    void invoke_handler(zmq::socket_t& socket, handle_map& handlers);
 
-class Error
-{
-public:
-    std::string message;
+    class Ping
+    {
+    public:
+        int sequence;
 
-    MSGPACK_DEFINE(message)
-    DECLARE_TYPE(Error)
-};
+        MSGPACK_DEFINE(sequence)
+        DECLARE_TYPE(Ping)
+    };
 
-class Ok
-{
-public:
-    MSGPACK_DEFINE()
-    DECLARE_TYPE(Ok)
-};
+    class Kill
+    {
+    public:
+        MSGPACK_DEFINE()
+        DECLARE_TYPE(Kill)
+    };
 
-class Status
-{
-public:
-    bool playing;
-    bool decoder_ready;
-    int decoder_requested_frames;
+    class Error
+    {
+    public:
+        std::string message;
 
-    MSGPACK_DEFINE(playing,
-            decoder_ready,
-            decoder_requested_frames)
+        MSGPACK_DEFINE(message)
+        DECLARE_TYPE(Error)
+    };
 
-    DECLARE_TYPE(Status)
-};
+    class Ok
+    {
+    public:
+        MSGPACK_DEFINE()
+        DECLARE_TYPE(Ok)
+    };
 
-class RequestStatus
-{
-public:
-    MSGPACK_DEFINE()
-    DECLARE_TYPE(RequestStatus)
-};
+    class Status
+    {
+    public:
+        bool playing;
+        bool decoder_ready;
+        int decoder_requested_frames;
 
-class Pong
-{
-public:
-    int sequence;
+        MSGPACK_DEFINE(playing,
+                decoder_ready,
+                decoder_requested_frames)
 
-    MSGPACK_DEFINE(sequence)
-    DECLARE_TYPE(Pong)
-};
+        DECLARE_TYPE(Status)
+    };
 
-class Play
-{
-public:
-    MSGPACK_DEFINE()
-    DECLARE_TYPE(Play)
-};
+    class RequestStatus
+    {
+    public:
+        MSGPACK_DEFINE()
+        DECLARE_TYPE(RequestStatus)
+    };
 
-class Pause
-{
-public:
-    MSGPACK_DEFINE()
-    DECLARE_TYPE(Pause)
-};
+    class Pong
+    {
+    public:
+        int sequence;
 
-/**
- * Indicate next song to be played.
- *
- * path - Path to the next song to be played.
- */
-class DecoderNextSong
-{
-public:
-    std::string path;
+        MSGPACK_DEFINE(sequence)
+        DECLARE_TYPE(Pong)
+    };
 
-    MSGPACK_DEFINE(path)
-    DECLARE_TYPE(DecoderNextSong)
-};
+    class Play
+    {
+    public:
+        MSGPACK_DEFINE()
+        DECLARE_TYPE(Play)
+    };
 
-class DecoderRequestFrame
-{
-public:
-    MSGPACK_DEFINE()
-    DECLARE_TYPE(DecoderRequestFrame)
-};
+    class Pause
+    {
+    public:
+        MSGPACK_DEFINE()
+        DECLARE_TYPE(Pause)
+    };
 
-class DecoderInitialize
-{
-public:
-    MSGPACK_DEFINE()
-    DECLARE_TYPE(DecoderInitialize)
-};
+    /**
+     * Indicate next song to be played.
+     *
+     * path - Path to the next song to be played.
+     */
+    class DecoderNext
+    {
+    public:
+        std::string path;
 
-class DecoderError
-{
-public:
-    MSGPACK_DEFINE()
-    DECLARE_TYPE(DecoderError)
-};
+        MSGPACK_DEFINE(path)
+        DECLARE_TYPE(DecoderNext)
+    };
 
+    class DecoderRequestFrame
+    {
+    public:
+        MSGPACK_DEFINE()
+        DECLARE_TYPE(DecoderRequestFrame)
+    };
 
+    class DecoderInitialize
+    {
+    public:
+        MSGPACK_DEFINE()
+        DECLARE_TYPE(DecoderInitialize)
+    };
 
-/**
- * Various decoder status that can be sent down the line.
- */
-enum DecoderStatusType {
-    EndSong,
-    Ready,
-    RequestFrameDropped
-};
+    class DecoderError
+    {
+    public:
+        MSGPACK_DEFINE()
+        DECLARE_TYPE(DecoderError)
+    };
 
-class DecoderStatus
-{
-public:
-    int status;
+    /**
+     * Various decoder status that can be sent down the line.
+     */
+    enum DecoderStatusType {
+        DecoderEndSong,
+        DecoderReady,
+        DecoderFrameDropped,
+        DecoderExit
+    };
 
-    DecoderStatus();
-    DecoderStatus(DecoderStatusType);
+    class DecoderStatus
+    {
+    public:
+        int status;
 
-    MSGPACK_DEFINE(status)
-    DECLARE_TYPE(DecoderStatus)
-};
+        DecoderStatus();
+        DecoderStatus(DecoderStatusType);
 
-/**
- * Various decoder status that can be sent down the line.
- */
-enum OutputStatusType {
-    FrameReceived
-};
+        MSGPACK_DEFINE(status)
+        DECLARE_TYPE(DecoderStatus)
+    };
 
-class OutputStatus
-{
-public:
-    int status;
+    enum MedialibStatusType {
+        MedialibExit
+    };
 
-    OutputStatus();
-    OutputStatus(OutputStatusType);
+    class MedialibStatus
+    {
+    public:
+        int status;
 
-    MSGPACK_DEFINE(status)
-    DECLARE_TYPE(OutputStatus)
-};
+        MedialibStatus();
+        MedialibStatus(MedialibStatusType);
+
+        MSGPACK_DEFINE(status)
+        DECLARE_TYPE(MedialibStatus)
+    };
+
+    /**
+     * Various decoder status that can be sent down the line.
+     */
+    enum OutputStatusType {
+        OutputFrameReceived,
+        OutputExit
+    };
+
+    class OutputStatus
+    {
+    public:
+        int status;
+
+        OutputStatus();
+        OutputStatus(OutputStatusType);
+
+        MSGPACK_DEFINE(status)
+        DECLARE_TYPE(OutputStatus)
+    };
+
+    class MedialibRequestNext
+    {
+    public:
+        MSGPACK_DEFINE()
+        DECLARE_TYPE(MedialibRequestNext)
+    };
+
+    class MedialibNext
+    {
+    public:
+        std::string path;
+        MSGPACK_DEFINE(path)
+        DECLARE_TYPE(MedialibRequestNext)
+    };
+}
 
 #endif /*__MESSAGES_HPP__*/

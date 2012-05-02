@@ -6,133 +6,168 @@
 
 #include <stdexcept>
 
-frame_container::frame_container()
-    : type(0x0), payload()
-{
-}
-
-frame_container::frame_container(uint8_t type, std::string payload)
-    : type(type), payload(payload)
-{
-
-}
-
-uint8_t frame_container::get_type()
-{
-    return type;
-}
-
-std::string frame_container::get_payload()
-{
-    return payload;
-}
-
-void invoke_frame_handler(
-    void* user_data,
-    handle_map& handlers,
-    frame_container& container)
-{
-    handle_map::iterator result = handlers.find(container.get_type());
-
-    if (result == handlers.end()) {
-        throw std::exception();
+namespace frame {
+    invoke_exception::invoke_exception(const char* message)
+        : std::runtime_error(message)
+    {
     }
 
-    frame_handle_function function = result->second;
+    frame_exception::frame_exception(const char* message)
+        : std::runtime_error(message)
+    {
+    }
 
-    function(user_data, container);
-}
+    frame_container::frame_container()
+        : type(0x0), payload()
+    {
+    }
 
-void receive_frame_container(zmq::socket_t& socket, frame_container* target)
-{
-    // receive container from client
-    zmq::message_t container;
-    socket.recv(&container);
+    frame_container::frame_container(uint8_t type, std::string payload)
+        : type(type), payload(payload)
+    {
 
-    msgpack::unpacked msg;
-    msgpack::unpack(&msg, (const char*)container.data(), container.size()); 
-    msgpack::object obj = msg.get();
+    }
 
-    obj.convert(target);
-}
+    uint8_t frame_container::get_type()
+    {
+        return type;
+    }
 
-template<typename T>
-void convert_frame(frame_container* container, T* target)
-{
-    std::string payload = container->get_payload();
+    std::string frame_container::get_payload()
+    {
+        return payload;
+    }
 
-    msgpack::unpacked unpacked;
+    void invoke_handler(zmq::socket_t& socket, handle_map& handlers)
+    {
+        frame_container container;
 
-    msgpack::unpack(&unpacked, payload.c_str(), payload.size());
-    msgpack::object obj = unpacked.get();
+        receive_frame_container(socket, &container);
 
-    obj.convert(target);
-}
+        handle_map::iterator result = handlers.find(container.get_type());
 
-template<typename T>
-void send_frame(zmq::socket_t& socket, T& frame)
-{
-    // serialize frame
-    msgpack::sbuffer frame_buffer;
-    msgpack::pack(frame_buffer, frame);
+        if (result == handlers.end()) {
+            throw invoke_exception("no handler found");
+        }
 
-    std::string frame_string(frame_buffer.data(), frame_buffer.size());
+        frame_handle_function function = result->second;
 
-    // build container
-    frame_container container(T::TYPE, frame_string);
+        function(container);
+    }
 
-    // serialize container
-    msgpack::sbuffer container_buffer;
-    msgpack::pack(container_buffer, container);
+    void receive_frame_container(zmq::socket_t& socket, frame_container* target)
+    {
+        // receive container from client
+        zmq::message_t container;
+        socket.recv(&container);
 
-    // send container as a reply
-    zmq::message_t reply (container_buffer.size());
-    memcpy (reply.data(), container_buffer.data(), container_buffer.size());
-    socket.send (reply);
-}
+        msgpack::unpacked msg;
 
-#define DECLARE_TEMPLATES(T, C) \
-    const uint8_t C::TYPE = T; \
-    template void convert_frame<C>(frame_container*, C*); \
-    template void send_frame<C>(zmq::socket_t&, C&);
+        try {
+            msgpack::unpack(&msg, (const char*)container.data(), container.size()); 
+        } catch (msgpack::unpack_error& error) {
+            throw frame_exception("unpack container failed");
+        }
 
-DECLARE_TEMPLATES(0x01, Ping)
-DECLARE_TEMPLATES(0x02, Pong)
-DECLARE_TEMPLATES(0x04, RequestStatus)
-DECLARE_TEMPLATES(0x05, Status)
-DECLARE_TEMPLATES(0x10, Play)
-DECLARE_TEMPLATES(0x11, Pause)
-DECLARE_TEMPLATES(0x80, Error)
-DECLARE_TEMPLATES(0x90, Ok)
+        msgpack::object obj = msg.get();
 
-/**
- * Decode frames.
- */
-DECLARE_TEMPLATES(0x21, DecoderNextSong)
-DECLARE_TEMPLATES(0x22, DecoderInitialize)
-DECLARE_TEMPLATES(0x40, DecoderError)
-DECLARE_TEMPLATES(0x41, DecoderStatus)
+        obj.convert(target);
+    }
 
-DecoderStatus::DecoderStatus()
-    : status(0)
-{
-}
+    template<typename T>
+    void convert_frame(frame_container* container, T* target)
+    {
+        std::string payload = container->get_payload();
 
-DecoderStatus::DecoderStatus(DecoderStatusType status)
-    : status(status)
-{
-}
+        msgpack::unpacked unpacked;
 
-DECLARE_TEMPLATES(0x42, DecoderRequestFrame)
+        try {
+            msgpack::unpack(&unpacked, payload.c_str(), payload.size());
+        } catch (msgpack::unpack_error& error) {
+            throw frame_exception("convert frame failed");
+        }
 
-DECLARE_TEMPLATES(0x51, OutputStatus)
+        msgpack::object obj = unpacked.get();
 
-OutputStatus::OutputStatus()
-    : status(0)
-{
-}
+        obj.convert(target);
+    }
 
-OutputStatus::OutputStatus(OutputStatusType status)
-    : status(status)
-{
+    template<typename T>
+    void send_frame(zmq::socket_t& socket, T& frame)
+    {
+        // serialize frame
+        msgpack::sbuffer frame_buffer;
+        msgpack::pack(frame_buffer, frame);
+
+        std::string frame_string(frame_buffer.data(), frame_buffer.size());
+
+        // build container
+        frame_container container(T::TYPE, frame_string);
+
+        // serialize container
+        msgpack::sbuffer container_buffer;
+        msgpack::pack(container_buffer, container);
+
+        // send container as a reply
+        zmq::message_t reply (container_buffer.size());
+        memcpy (reply.data(), container_buffer.data(), container_buffer.size());
+        socket.send (reply);
+    }
+
+    DECLARE_TEMPLATE(0x01, Ping)
+    DECLARE_TEMPLATE(0x02, Pong)
+    DECLARE_TEMPLATE(0x04, RequestStatus)
+    DECLARE_TEMPLATE(0x05, Status)
+    DECLARE_TEMPLATE(0x10, Play)
+    DECLARE_TEMPLATE(0x11, Pause)
+    DECLARE_TEMPLATE(0x80, Error)
+    DECLARE_TEMPLATE(0x90, Ok)
+    DECLARE_TEMPLATE(0x09, Kill)
+
+    /**
+     * Decode frames.
+     */
+    DECLARE_TEMPLATE(0x21, DecoderNext)
+    DECLARE_TEMPLATE(0x22, DecoderInitialize)
+    DECLARE_TEMPLATE(0x40, DecoderError)
+    DECLARE_TEMPLATE(0x41, DecoderStatus)
+
+    DecoderStatus::DecoderStatus()
+        : status(0)
+    {
+    }
+
+    DecoderStatus::DecoderStatus(DecoderStatusType status)
+        : status(status)
+    {
+    }
+
+    DECLARE_TEMPLATE(0x42, DecoderRequestFrame)
+
+    DECLARE_TEMPLATE(0x51, OutputStatus)
+
+    OutputStatus::OutputStatus()
+        : status(0)
+    {
+    }
+
+    OutputStatus::OutputStatus(OutputStatusType status)
+        : status(status)
+    {
+    }
+
+    DECLARE_TEMPLATE(0x60, MedialibRequestNext)
+    DECLARE_TEMPLATE(0x61, MedialibNext)
+
+    DECLARE_TEMPLATE(0x71, MedialibStatus)
+
+    MedialibStatus::MedialibStatus()
+        : status(0)
+    {
+    }
+
+    MedialibStatus::MedialibStatus(MedialibStatusType status)
+        : status(status)
+    {
+    }
 }

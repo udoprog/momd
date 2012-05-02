@@ -1,55 +1,40 @@
 #include "output.hpp"
+#include "output_error.hpp"
+#include "output_base.hpp"
 
-#include "output/pulse.hpp"
+#include "plugin.hpp"
 
-output_error::output_error(const char* message)
-  : message(message), message_extra(NULL)
-{
-}
-
-output_error::output_error(const char* message, const char* message_extra)
-  : message(message), message_extra(message_extra)
-{
-}
-
-output_error::~output_error() throw()
-{
-}
-
-const char* output_error::what() const throw()
-{
-  return this->message;
-}
-
-const char* output_error::extra() const
-{
-  return this->message_extra;
-}
+#include <iostream>
 
 output_base_ptr open_output(std::string name)
 {
-  output_base_ptr base;
+    output_base_ptr output;
 
-  if (std::string("pulse").compare(name) == 0) {
-    base.reset(new output_pulse());
-  }
-  else {
-    throw output_error("unsupported output type");
-  }
+    std::vector<plugin_spec*>::iterator iter = output_plugins.begin();
+   
+    while (iter != output_plugins.end()) {
+        plugin_spec* spec = *(iter++);
 
-  return base;
-}
+        if (name.compare(spec->name) != 0) {
+            continue;
+        }
 
-void output_base::set_name(std::string name)
-{
-  _name = name;
-}
+        output.reset(spec->data.output.output_new());
+    }
 
-std::string output_base::name()
-{
-  return _name;
+    if (!output) {
+        throw output_error("unsupported output type");
+    }
+
+    return output;
 }
 
 void initialize_output()
 {
+    std::vector<plugin_spec*>::iterator iter = output_plugins.begin();
+
+    while (iter != output_plugins.end()) {
+        plugin_spec* spec = *(iter++);
+        spec->data.output.output_initialize();
+    }
 }

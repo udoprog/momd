@@ -1,0 +1,61 @@
+NAME
+----
+momd - Modular Media Daemon
+
+SYNOPSIS
+--------
+momd is a highly modular set of media daemons, which support playback for a range of
+available formats.
+
+Each component communicates with each other to achieve their specific goal, which
+yields to a highly modular design.
+
+momd instances are managed using the mom command.
+
+BUILDING
+--------
+
+Building momd requires a c++11 capable compiler, it has only been tested with the
+following.
+
+  - g++-4.7 - GNU GCC version 4.7
+
+To setup cmake to use another compiler, do the following when configuring (assuming you have g++-4.7 installed on your system).
+
+--------------------------------------
+#> export CXX=g++4.7-<version>
+#> cmake .
+--------------------------------------
+
+SUPPORTED FORMATS
+-----------------
+
+  - _libflac_ - flac
+  - _libvorbis_ - ogg
+  - _libmpg123_ - mp3, mp4
+
+IMPLEMENTATION
+--------------
+momd is setup with a set of services, these are.
+
+  - _main_ - Synchronization and intercommunication service.
+  - _medialib_ - The media library service.
+  - _decoder_ - The audo decoder service.
+  - _output_ - The output service.
+
+Each service is connected to a set of zeromq sockets, the one socket they have in
+common is the 'management' socket which accepts commands and returns service status
+messages.
+
+PROTOCOL
+--------
+The service protocol utiilizes varying length msgpack messages.
+
+Each frame is packed inside of a frame_container consisting of.
+
+type (integer):: Message type.
+payload (string):: Message payload.
+
+The payload is a msgpacked string of the designated type.
+
+The same protocol is utilized by the mom command to communicate with momd.

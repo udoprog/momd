@@ -1,40 +1,45 @@
 cmake_minimum_required(VERSION 2.6)
-project(mpdpp)
+project(momd)
 
-set(mpdpp_SOURCES 
+set(CXXFLAGS "-O3 -Wall -pedantic -std=c++11")
+set(CXXFLAGS_DEBUG "-O3 -Wall -pedantic -std=c++11 -g")
+
+set(momd_SOURCES 
+  src/output_base.cpp
+  src/output_error.cpp
   src/main.cpp
-  src/main_event_loop.cpp
-  src/decoder_event_loop.cpp
-  src/output_event_loop.cpp
+  src/main_service.cpp
+  src/decoder_service.cpp
+  src/output_service.cpp
+  src/medialib_service.cpp
   src/messages.cpp
   src/output.cpp
-  src/output/pulse.cpp
-  src/input/mpg123.cpp
-  src/input/vorbis.cpp
-  src/input/flac.cpp
   src/input.cpp
+  src/plugin.cpp
   src/io.cpp
+  src/dlopen.cpp
   )
 
-set(mpdpp_LIBRARIES
+find_package(Boost 1.46 COMPONENTS filesystem system REQUIRED)
+
+set(momd_LIBRARIES
   msgpack
   zmq
-  boost_system
-  boost_filesystem
   config++
-  vorbisfile
-  FLAC++
-  mpg123
-  pulse-simple
+  dl
+  ${Boost_LIBRARIES}
   )
 
+include_directories(${Boost_INCLUDE_DIR})
 include_directories(src)
 
-add_executable(mpd++ ${mpdpp_SOURCES})
-add_executable(mpd++-debug ${mpdpp_SOURCES})
+add_executable(momd ${momd_SOURCES})
+add_executable(momd-debug EXCLUDE_FROM_ALL ${momd_SOURCES})
 
-set_target_properties(mpd++ PROPERTIES COMPILE_FLAGS "-O3 -Wall -pedantic -std=c++11")
-set_target_properties(mpd++-debug PROPERTIES COMPILE_FLAGS "-O0 -Wall -pedantic -std=c++11 -g")
+set_target_properties(momd PROPERTIES COMPILE_FLAGS ${CXXFLAGS})
+set_target_properties(momd-debug PROPERTIES COMPILE_FLAGS ${CXXFLAGS_DEBUG})
 
-target_link_libraries(mpd++ msgpack ${mpdpp_LIBRARIES})
-target_link_libraries(mpd++-debug msgpack ${mpdpp_LIBRARIES})
+target_link_libraries(momd msgpack ${momd_LIBRARIES})
+target_link_libraries(momd-debug msgpack ${momd_LIBRARIES})
+
+add_subdirectory(plugins)

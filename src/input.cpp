@@ -1,15 +1,8 @@
 #include "input.hpp"
+#include "plugin.hpp"
 
-#include "input/mpg123.hpp"
-#include "input/vorbis.hpp"
-#include "input/flac.hpp"
-
-const initializer_func init[] = {
-  &initialize_mpg123,
-  &initialize_vorbis,
-  &initialize_flac,
-  NULL
-};
+#include <vector>
+#include <boost/filesystem.hpp>
 
 input_error::input_error(const char* message)
   : message(message), message_extra(NULL)
@@ -37,36 +30,42 @@ const char* input_error::extra() const
 
 void initialize_input()
 {
-  int i = 0;
-
-  while (true) {
-    initializer_func f = init[i++];
-
-    if (f == NULL) {
-      break;
+    std::vector<plugin_spec*>::iterator iter = input_plugins.begin();
+   
+    while (iter != input_plugins.end()) {
+        plugin_spec* spec = *(iter++);
+        spec->data.input.input_initialize();
     }
-
-    f();
-  }
 }
 
-input_base_ptr open_path(fs::path path)
+input_base_ptr open_path(std::string file_path)
 {
-  input_base_ptr base;
+    using boost::filesystem::extension;
+    using boost::filesystem::path;
 
-  if (std::string(".ogg").compare(path.extension().string()) == 0) {
-    base.reset(new input_vorbis());
-  }
-  else if (std::string(".flac").compare(path.extension().string()) == 0) {
-    base.reset(new input_flac());
-  }
-  else if (std::string(".mp3").compare(path.extension().string()) == 0) {
-    base.reset(new input_mpg123());
-  }
-  else {
-    throw input_error("unsupported file extension");
-  }
+    path p = file_path;
 
-  base->open(path);
-  return base;
+    std::vector<std::string> parts;
+
+    std::string ext = extension(p);
+
+    input_base_ptr input;
+
+    std::vector<plugin_spec*>::iterator iter = input_plugins.begin();
+
+    while (iter != input_plugins.end()) {
+        plugin_spec* spec = *(iter++);
+
+        if (spec->data.input.input_check(p.string().c_str(), ext.c_str())) {
+            input.reset(spec->data.input.input_new());
+            break;
+        }
+    }
+
+    if (!input) {
+        throw input_error("unsupported file extension");
+    }
+   
+    input->open(file_path);
+    return input;
 }

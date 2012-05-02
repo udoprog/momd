@@ -1,9 +1,9 @@
 #ifndef __IO_HPP__
 #define __IO_HPP__
 
-#include <boost/shared_ptr.hpp>
-
 #include <cstring>
+
+#include <memory>
 
 #define PCM_LE 0
 #define PCM_BE 1
@@ -47,6 +47,6 @@ private:
   int _size;
 };
 
-typedef boost::shared_ptr<pcm_packet> pcm_packet_ptr;
+typedef std::shared_ptr<pcm_packet> pcm_packet_ptr;
 
 #endif /* __IO_HPP__ */

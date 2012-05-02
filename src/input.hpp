@@ -2,15 +2,11 @@
 #define __INPUT_HPP__
 
 #include <exception>
+#include <memory>
 
-#include <boost/filesystem.hpp>
-#include <boost/shared_ptr.hpp>
-
-struct pcm_meta;
-struct pcm_packet;
-struct pcm_info;
-
-namespace fs = boost::filesystem;
+class pcm_meta;
+class pcm_packet;
+class pcm_info;
 
 class input_error : public std::exception
 {
@@ -28,9 +24,9 @@ private:
 
 class input_base {
 public:
-  typedef boost::shared_ptr<pcm_packet> pcm_packet_ptr;
+  typedef std::shared_ptr<pcm_packet> pcm_packet_ptr;
 
-  virtual void open(fs::path path) = 0;
+  virtual void open(std::string path) = 0;
   virtual void close() = 0;
   virtual void seek(double pos) = 0;
   virtual pcm_meta tell() = 0;
@@ -46,13 +42,13 @@ public:
   }
 };
 
-typedef boost::shared_ptr<input_base> input_base_ptr;
+typedef std::shared_ptr<input_base> input_base_ptr;
 
 typedef void(*initializer_func)();
 extern const initializer_func init[];
 
 void initialize_input();
 
-input_base_ptr open_path(fs::path path);
+input_base_ptr open_path(std::string path);
 
 #endif /* __INPUT_HPP__ */

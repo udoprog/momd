@@ -1,0 +1,4 @@
+add_subdirectory(pulse)
+add_subdirectory(mpg123)
+add_subdirectory(flac)
+add_subdirectory(vorbis)

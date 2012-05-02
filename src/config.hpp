@@ -1,7 +1,7 @@
 #ifndef __CONFIG_HPP__
 #define __CONFIG_HPP__
 
-#define PROGRAM_NAME "mpd++"
+#define PROGRAM_NAME "momd"
 
 #define DEFAULT_GLOBAL_CHANNELS 2
 

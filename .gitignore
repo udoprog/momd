@@ -1,0 +1,7 @@
+.*.un~
+.*.swp
+*.pyc
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
+Makefile
