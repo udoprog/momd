@@ -1,12 +1,11 @@
 #include "decoder_service.hpp"
 
 #include "input.hpp"
-#include "io.hpp"
-
 #include "messages.hpp"
 #include "log.hpp"
+#include "pcm_packet.hpp"
+#include "input_base.hpp"
 
-#include <stdexcept>
 #include <functional>
 
 #define MANAGEMENT(items) items[0]
@@ -74,7 +73,7 @@ void decoder_service::decoder_request_frame(frame::frame_container& container) {
         return;
     }
 
-    pcm_packet_ptr pcm = input->readsome();
+    pcm_packet::ptr pcm = input->readsome();
 
     if (!pcm) {
         // set input to false and request another song.

@@ -1,15 +1,11 @@
 #include "output_service.hpp"
 
-#include "io.hpp"
 #include "log.hpp"
-
 #include "messages.hpp"
-
 #include "output.hpp"
-
 #include "output_base.hpp"
+#include "pcm_packet.hpp"
 
-#include <stdexcept>
 #include <functional>
 
 #define OUTPUT_DATA(items) items[0]
@@ -60,7 +56,7 @@ void output_service::recv_decoder_data()
     zmq::message_t message;
     output_data.recv(&message);
 
-    pcm_packet_ptr pcm(
+    pcm_packet::ptr pcm(
             new pcm_packet((const char*)message.data(), message.size()));
 
     if (output) {

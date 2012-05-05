@@ -1,8 +1,9 @@
 #include "vorbis.hpp"
 
-#include "input.hpp"
-#include "io.hpp"
 #include "plugin.hpp"
+#include "input_error.hpp"
+#include "pcm_meta.hpp"
+#include "pcm_packet.hpp"
 
 #include <vorbis/vorbisfile.h>
 
@@ -98,13 +99,13 @@ pcm_info input_vorbis::info()
   return info;
 }
 
-pcm_packet_ptr input_vorbis::readsome()
+pcm_packet::ptr input_vorbis::readsome()
 {
   char buffer[1024 * 8];
 
   int r = ov_read(_oggfile.get(), buffer, sizeof(buffer), this->_endian, 2, 1, &this->_bitstream);
 
-  pcm_packet_ptr pcm;
+  pcm_packet::ptr pcm;
 
   if (r > 0) {
     pcm.reset(new pcm_packet(buffer, r));

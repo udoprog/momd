@@ -1,10 +1,9 @@
 #ifndef __INPUT_FLAC_HPP__
 #define __INPUT_FLAC_HPP__
 
+#include "input_base.hpp"
+
 #include <FLAC++/decoder.h>
-
-#include "input.hpp"
-
 #include <string>
 #include <memory>
 
@@ -36,7 +35,7 @@ public:
   virtual double length();
 
   virtual pcm_info info();
-  virtual pcm_packet_ptr readsome();
+  virtual std::shared_ptr<pcm_packet> readsome();
 
   virtual FLAC__StreamDecoderWriteStatus write_callback(const ::FLAC__Frame *frame, const FLAC__int32 * const buffer[]);
   virtual void metadata_callback(const ::FLAC__StreamMetadata *metadata);

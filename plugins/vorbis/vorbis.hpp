@@ -3,7 +3,7 @@
 
 #include <vorbis/vorbisfile.h>
 
-#include "input.hpp"
+#include "input_base.hpp"
 
 #include <string>
 #include <memory>
@@ -16,8 +16,6 @@ void initialize_vorbis();
 
 class input_vorbis : public input_base {
 public:
-  typedef std::shared_ptr<pcm_packet> pcm_packet_ptr;
-
   input_vorbis();
   ~input_vorbis();
 
@@ -28,7 +26,7 @@ public:
   virtual double length();
 
   virtual pcm_info info();
-  virtual pcm_packet_ptr readsome();
+  virtual std::shared_ptr<pcm_packet> readsome();
 private:
   int _bitstream;
   int _endian;

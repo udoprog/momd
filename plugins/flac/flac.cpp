@@ -1,8 +1,9 @@
 #include "flac.hpp"
-#include "io.hpp"
-#include "plugin.hpp"
 
-#include <stdio.h>
+#include "plugin.hpp"
+#include "input_error.hpp"
+#include "pcm_meta.hpp"
+#include "pcm_packet.hpp"
 
 input_base* flac__new();
 void flac__initialize();
@@ -92,13 +93,13 @@ pcm_info input_flac::info()
   return info;
 }
 
-pcm_packet_ptr input_flac::readsome()
+pcm_packet::ptr input_flac::readsome()
 {
   if (!_buffer) {
     throw input_error("buffer has not been initialized (no metadata section?)");
   }
 
-  pcm_packet_ptr pcm;
+  pcm_packet::ptr pcm;
 
   _size = 0;
   
@@ -108,7 +109,7 @@ pcm_packet_ptr input_flac::readsome()
     }
 
     if (get_state() != FLAC__STREAM_DECODER_SEARCH_FOR_FRAME_SYNC) {
-      throw new input_error("decoder not syncing", get_state().as_cstring());
+      throw new input_error(get_state().as_cstring());
     }
 
     if (!process_single()) {

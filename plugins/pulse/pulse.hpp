@@ -11,6 +11,8 @@
 
 #include <memory>
 
+class pcm_packet;
+
 class output_pulse : public output_base {
 public:
   output_pulse();
@@ -20,7 +22,7 @@ public:
   virtual void open();
   virtual bool is_open();
   virtual void close();
-  virtual void write(pcm_packet_ptr);
+  virtual void write(std::shared_ptr<pcm_packet>);
   pcm_info info();
 
 private:

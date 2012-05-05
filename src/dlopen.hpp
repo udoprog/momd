@@ -1,8 +1,6 @@
 #ifndef _DLOPEN_HPP
 #define _DLOPEN_HPP
 
-struct dl_t;
-
 #if defined(_MSC_VER)
 #   define DL_EXTENSION ".dll"
 #   define DL_EXTL 4
@@ -10,6 +8,8 @@ struct dl_t;
 #   define DL_EXTENSION ".so"
 #   define DL_EXTL 3
 #endif
+
+struct dl_t;
 
 dl_t* dl_open(const char*);
 void* dl_sym(dl_t*, const char*);

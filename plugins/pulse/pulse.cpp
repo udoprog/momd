@@ -1,8 +1,9 @@
 #include "pulse.hpp"
-#include "io.hpp"
-#include "output_error.hpp"
 
+#include "output_error.hpp"
 #include "plugin.hpp"
+#include "pcm_info.hpp"
+#include "pcm_packet.hpp"
 
 #include "config.hpp"
 #include <cstring>
@@ -119,7 +120,7 @@ pcm_info output_pulse::info()
   return info;
 }
 
-void output_pulse::write(pcm_packet_ptr pcm)
+void output_pulse::write(pcm_packet::ptr pcm)
 {
   int error;
   int r;

@@ -1,8 +1,6 @@
 #include "plugin.hpp"
 #include "dlopen.hpp"
 
-#include <iostream>
-#include <dirent.h>
 #include <boost/filesystem.hpp>
 #include <deque>
 

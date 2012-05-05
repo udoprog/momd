@@ -4,8 +4,6 @@
 
 #include "plugin.hpp"
 
-#include <iostream>
-
 output_base_ptr open_output(std::string name)
 {
     output_base_ptr output;
