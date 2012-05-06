@@ -26,10 +26,6 @@ private:
     void medialib_next(frame::frame_container& container);
     void medialib_status(frame::frame_container& container);
 
-    /* log handling functions */
-    void receive_and_print_log();
-    void exhaust_log();
-
     /* loop helper */
     void loop(zmq::pollitem_t items[], size_t length);
 
@@ -39,7 +35,6 @@ private:
     zmq::socket_t output;
     zmq::socket_t decoder_data;
     zmq::socket_t output_data;
-    zmq::socket_t logger_input;
     zmq::socket_t logger;
     frame::handle_map handlers;
 
@@ -47,7 +42,7 @@ private:
     int decoder_requested_frames;
     bool decoder_ready;
     bool playing;
-    bool killed;
+    bool stopped;
 
     bool decoder_exit;
     bool output_exit;

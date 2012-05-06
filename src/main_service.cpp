@@ -4,14 +4,12 @@
 #include "log.hpp"
 
 #include <functional>
-#include <iostream>
 
 #define MANAGEMENT(items) items[0]
 #define MEDIALIB(items) items[1]
 #define DECODER_DATA(items) items[2]
 #define DECODER(items) items[3]
 #define OUTPUT(items) items[4]
-#define LOGGER_INPUT(items) items[5]
 
 main_service::main_service(zmq::context_t& context)
    :  management(context, ZMQ_REP),
@@ -20,7 +18,6 @@ main_service::main_service(zmq::context_t& context)
       output(context, ZMQ_PAIR),
       decoder_data(context, ZMQ_PULL),
       output_data(context, ZMQ_PUSH),
-      logger_input(context, ZMQ_PULL),
       logger(context, ZMQ_PUSH),
       handlers(),
       decoder_requested_frames(0),
@@ -41,7 +38,6 @@ main_service::main_service(zmq::context_t& context)
     output.bind("inproc://output");
     decoder_data.bind("inproc://decoder/data");
     output_data.bind("inproc://output/data");
-    logger_input.bind("inproc://logger");
     logger.connect("inproc://logger");
 
     handlers[Ping::TYPE] =
@@ -82,7 +78,6 @@ main_service::~main_service() {
     decoder.close();
     output_data.close();
     output.close();
-    logger_input.close();
     logger.close();
 }
 
@@ -238,32 +233,8 @@ void main_service::medialib_status(frame::frame_container& container)
     }
 }
 
-void main_service::receive_and_print_log()
+void main_service::run()
 {
-    zmq::message_t message;
-    logger_input.recv(&message);
-    std::string log_message((const char*)message.data(), message.size());
-    std::cout << "LOG: " << log_message << std::endl;
-}
-
-void main_service::exhaust_log() {
-    zmq::pollitem_t logger_items[] = {
-        {logger_input, 0, ZMQ_POLLIN, 0}
-    };
-
-    while (true) {
-        zmq::poll(logger_items, 1, 1000);
-
-        if (logger_items[0].revents & ZMQ_POLLIN) {
-            receive_and_print_log();
-            continue;
-        }
-
-        break;
-    }
-}
-
-void main_service::run() {
     LOG(logger, LOG_DEBUG, "main: Initializing Decoder")
     frame::DecoderInitialize initialize;
     send_frame(decoder, initialize);
@@ -273,12 +244,11 @@ void main_service::run() {
         {medialib, 0, ZMQ_POLLIN, 0},
         {decoder_data, 0, 0, 0},
         {decoder, 0, ZMQ_POLLIN, 0},
-        {output, 0, ZMQ_POLLIN, 0},
-        {logger_input, 0, ZMQ_POLLIN, 0}
+        {output, 0, ZMQ_POLLIN, 0}
     };
 
     while (true) {
-        loop(items, 6);
+        loop(items, sizeof(items) / sizeof(zmq::pollitem_t));
 
         bool done = medialib_exit
                 &&  decoder_exit
@@ -288,9 +258,6 @@ void main_service::run() {
             break;
         }
     }
-
-    std::cerr << "MAIN: Exhausting Log" << std::endl;
-    exhaust_log();
 }
 
 void main_service::loop(zmq::pollitem_t items[], size_t length) {
@@ -335,9 +302,5 @@ void main_service::loop(zmq::pollitem_t items[], size_t length) {
         zmq::message_t message;
         decoder_data.recv(&message);
         output_data.send(message);
-    }
-
-    if (LOGGER_INPUT(items).revents & ZMQ_POLLIN) {
-        receive_and_print_log();
     }
 }

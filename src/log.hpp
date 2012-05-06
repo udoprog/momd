@@ -1,6 +1,7 @@
 #ifndef __LOG_HPP__
 #define __LOG_HPP__
 
+#include <algorithm>
 #include <zmq.hpp>
 
 #define LOG_ERROR 1
@@ -14,13 +15,10 @@
 #include <cstdio>
 
 #define LOG(socket, level, ...)\
-    if (level <= LOG_LEVEL) {\
-        char log_buffer[1025];\
-        ::memset(log_buffer, '\x00', 1025);\
-        ::snprintf(log_buffer, 1024, __VA_ARGS__);\
-        zmq::message_t log_message(strlen(log_buffer));\
-        ::memcpy(log_message.data(), log_buffer, strlen(log_buffer));\
-        socket.send(log_message);\
-    }
+    if (level <= LOG_LEVEL) { log_remote(socket, level,  __VA_ARGS__); }
+
+#define BUFFER_SIZE 1024
+
+void log_remote(zmq::socket_t& socket, int level, const char* fmt, ...);
 
 #endif /* __LOG_HPP__ */

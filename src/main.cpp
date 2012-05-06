@@ -5,6 +5,7 @@
 
 #include "output_service.hpp"
 #include "decoder_service.hpp"
+#include "logger_service.hpp"
 #include "medialib_service.hpp"
 #include "plugin.hpp"
 #include "output_base.hpp"
@@ -51,6 +52,11 @@ void medialib_event_loop(zmq::context_t* context, libconfig::Config* config)
     service.run();
 }
 
+void logger_event_loop(logger_service* service)
+{
+    service->run();
+}
+
 void read_config(libconfig::Config& config, char* path)
 {
     FILE* conf = fopen(path, "r");
@@ -66,6 +72,9 @@ void read_config(libconfig::Config& config, char* path)
 
 void main_event_loop(libconfig::Config& config, zmq::context_t& context)
 {
+    logger_service logger(&context);
+    std::thread logger_thread(logger_event_loop, &logger);
+
     main_service main(context);
 
     std::thread decoder_thread(decoder_event_loop, &context, &config);
@@ -79,10 +88,35 @@ void main_event_loop(libconfig::Config& config, zmq::context_t& context)
     decoder_thread.join();
     medialib_thread.join();
     output_thread.join();
+
+    logger.stop();
+
+    logger_thread.join();
+}
+
+#include <stdio.h>
+#include <execinfo.h>
+#include <signal.h>
+#include <stdlib.h>
+
+void handler(int sig) {
+    void *array[10];
+    size_t size;
+
+    // get void*'s for all entries on the stack
+    size = backtrace(array, 10);
+
+    // print out all the frames to stderr
+    fprintf(stderr, "Error: signal %d:\n", sig);
+    backtrace_symbols_fd(array, size, 2);
+    exit(1);
 }
 
 int main(int argc, char* argv[])
 {
+    signal(SIGSEGV, handler);
+    signal(SIGABRT, handler);
+
     const char* program_name = argv[0];
 
     if (argc < 2) {

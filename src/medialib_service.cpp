@@ -16,7 +16,7 @@ medialib_service::medialib_service(zmq::context_t* context)
       handlers(),
       songs(),
       next_song(0),
-      killed(false)
+      stopped(false)
 {
     using namespace std::placeholders;
     using namespace frame;
@@ -40,7 +40,7 @@ medialib_service::~medialib_service() {
 void medialib_service::kill(frame::frame_container& container) {
     LOG(logger, LOG_DEBUG, "medialib: Kill")
 
-    killed = true;
+    stopped = true;
 }
 
 void medialib_service::request_next(frame::frame_container& container) {
@@ -66,8 +66,8 @@ void medialib_service::run() {
     };
 
     try {
-        while (!killed) {
-            loop(items, 1);
+        while (!stopped) {
+            loop(items, sizeof(items) / sizeof(zmq::pollitem_t));
         }
     } catch (std::exception& e) {
         LOG(logger, LOG_ERROR, "medialib: Error: %s", e.what());

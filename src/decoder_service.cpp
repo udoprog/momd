@@ -15,7 +15,7 @@ decoder_service::decoder_service(zmq::context_t* context)
       decoder_data(*context, ZMQ_PUSH),
       logger(*context, ZMQ_PUSH),
       handlers(),
-      killed(false)
+      stopped(false)
 {
     using namespace std::placeholders;
     using namespace frame;
@@ -46,7 +46,7 @@ decoder_service::~decoder_service() {
 
 void decoder_service::kill(frame::frame_container& container) {
     LOG(logger, LOG_DEBUG, "decoder: Kill")
-    killed = true;
+    stopped = true;
 }
 
 void decoder_service::next_song(frame::frame_container& container) {
@@ -104,8 +104,8 @@ void decoder_service::run() {
     };
 
     try {
-        while (!killed) {
-            loop(items, 1);
+        while (!stopped) {
+            loop(items, sizeof(items) / sizeof(zmq::pollitem_t));
         }
 
         LOG(logger, LOG_INFO, "decoder: Closing");

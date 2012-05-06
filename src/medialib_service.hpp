@@ -29,7 +29,7 @@ private:
 
     std::vector<std::string> songs;
     unsigned int next_song;
-    bool killed;
+    bool stopped;
 };
 
 #endif /*  __MEDIALIB_EVENT_LOOP__ */

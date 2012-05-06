@@ -30,7 +30,7 @@ private:
 
     frame::handle_map handlers;
 
-    bool killed;
+    bool stopped;
 };
 
 #endif /*  __OUTPUT_SERVICE__ */

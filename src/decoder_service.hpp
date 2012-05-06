@@ -28,7 +28,7 @@ private:
     zmq::socket_t decoder_data;
     zmq::socket_t logger;
     frame::handle_map handlers;
-    bool killed;
+    bool stopped;
 };
 
 

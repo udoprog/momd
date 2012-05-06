@@ -17,7 +17,7 @@ output_service::output_service(zmq::context_t* context, output_base_ptr output)
       logger(*context, ZMQ_PUSH),
       output(output),
       handlers(),
-      killed(false)
+      stopped(false)
 {
     using namespace std::placeholders;
     using namespace frame;
@@ -41,7 +41,7 @@ output_service::~output_service()
 void output_service::kill(frame::frame_container& container)
 {
     LOG(logger, LOG_DEBUG, "output: Kill")
-    killed = true;
+    stopped = true;
 }
 
 void output_service::send_status(frame::OutputStatusType status_type)
@@ -72,8 +72,8 @@ void output_service::run()
     };
 
     try {
-        while (!killed) {
-            loop(items, 2);
+        while (!stopped) {
+            loop(items, sizeof(items) / sizeof(zmq::pollitem_t));
         }
     } catch (std::exception& e) {
         LOG(logger, LOG_ERROR, "output: Error: %s", e.what());

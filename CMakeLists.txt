@@ -10,6 +10,7 @@ set(momd_SOURCES
   src/dlopen.cpp
   src/input.cpp
   src/input_error.cpp
+  src/log.cpp
   src/main.cpp
   src/main_service.cpp
   src/medialib_service.cpp
@@ -18,6 +19,7 @@ set(momd_SOURCES
   src/output.cpp
   src/output_error.cpp
   src/output_service.cpp
+  src/logger_service.cpp
   src/pcm_info.cpp
   src/pcm_packet.cpp
   src/plugin.cpp
