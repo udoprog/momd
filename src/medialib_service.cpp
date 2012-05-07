@@ -12,7 +12,7 @@
 
 medialib_service::medialib_service(zmq::context_t* context)
     : logger(*context, ZMQ_PUSH),
-      management(*context, ZMQ_PAIR),
+      management(*context, ZMQ_DEALER),
       handlers(),
       songs(),
       next_song(0),
@@ -23,13 +23,15 @@ medialib_service::medialib_service(zmq::context_t* context)
     using std::bind;
 
     logger.connect("inproc://logger");
-    management.connect("inproc://medialib");
+
+    management.setsockopt(ZMQ_IDENTITY, "medialib", 8);
+    management.connect("inproc://services");
 
     handlers[Kill::TYPE] =
         bind(&medialib_service::kill, this, _1);
 
-    handlers[MedialibRequestNext::TYPE] =
-        bind(&medialib_service::request_next, this, _1);
+    handlers[MedialibRequestNextSong::TYPE] =
+        bind(&medialib_service::request_next_song, this, _1);
 }
 
 medialib_service::~medialib_service() {
@@ -43,10 +45,10 @@ void medialib_service::kill(frame::frame_container& container) {
     stopped = true;
 }
 
-void medialib_service::request_next(frame::frame_container& container) {
-    LOG(logger, LOG_DEBUG, "medialib: MedialibNext");
+void medialib_service::request_next_song(frame::frame_container& container) {
+    LOG(logger, LOG_DEBUG, "medialib: MedialibRequestNextSong");
 
-    frame::MedialibNext next;
+    frame::MedialibNextSong next;
     next.path = songs[next_song];
     send_frame(management, next);
 
@@ -65,13 +67,17 @@ void medialib_service::run() {
         {management, 0, ZMQ_POLLIN, 0}
     };
 
+    size_t items_size = sizeof(items) / sizeof(zmq::pollitem_t);
+
     try {
+        send_status(frame::MedialibReady);
+
         while (!stopped) {
-            loop(items, sizeof(items) / sizeof(zmq::pollitem_t));
+            loop(items, items_size);
         }
     } catch (std::exception& e) {
         LOG(logger, LOG_ERROR, "medialib: Error: %s", e.what());
-        /* send panic frame */
+        send_status(frame::MedialibPanic);
     }
 
     LOG(logger, LOG_INFO, "medialib: Closing");

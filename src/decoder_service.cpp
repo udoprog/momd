@@ -11,7 +11,7 @@
 #define MANAGEMENT(items) items[0]
 
 decoder_service::decoder_service(zmq::context_t* context)
-    : management(*context, ZMQ_PAIR),
+    : management(*context, ZMQ_DEALER),
       decoder_data(*context, ZMQ_PUSH),
       logger(*context, ZMQ_PUSH),
       handlers(),
@@ -22,20 +22,20 @@ decoder_service::decoder_service(zmq::context_t* context)
     using std::bind;
 
     decoder_data.connect("inproc://decoder/data");
-    management.connect("inproc://decoder");
+
+    management.setsockopt(ZMQ_IDENTITY, "decoder", 7);
+    management.connect("inproc://services");
+
     logger.connect("inproc://logger");
 
     handlers[Kill::TYPE] =
         bind(&decoder_service::kill, this, _1);
 
-    handlers[DecoderNext::TYPE] =
+    handlers[DecoderNextSong::TYPE] =
         bind(&decoder_service::next_song, this, _1);
 
     handlers[DecoderRequestFrame::TYPE] =
         bind(&decoder_service::decoder_request_frame, this, _1);
-
-    handlers[DecoderInitialize::TYPE] =
-        bind(&decoder_service::decoder_initialize, this, _1);
 }
 
 decoder_service::~decoder_service() {
@@ -50,9 +50,9 @@ void decoder_service::kill(frame::frame_container& container) {
 }
 
 void decoder_service::next_song(frame::frame_container& container) {
-    LOG(logger, LOG_DEBUG, "decoder: DecoderNext");
+    LOG(logger, LOG_DEBUG, "decoder: DecoderNextSong");
 
-    frame::DecoderNext next_song;
+    frame::DecoderNextSong next_song;
     convert_frame(&container, &next_song);
 
     try {
@@ -62,7 +62,7 @@ void decoder_service::next_song(frame::frame_container& container) {
         return;
     }
 
-    send_status(frame::DecoderReady);
+    send_status(frame::DecoderBusy);
 }
 
 void decoder_service::decoder_request_frame(frame::frame_container& container) {
@@ -103,21 +103,26 @@ void decoder_service::run() {
         {management, 0, ZMQ_POLLIN, 0}
     };
 
+    size_t items_size = sizeof(items) / sizeof(zmq::pollitem_t);
+
     try {
+        send_status(frame::DecoderReady);
+
         while (!stopped) {
-            loop(items, sizeof(items) / sizeof(zmq::pollitem_t));
+            loop(items, items_size);
         }
 
         LOG(logger, LOG_INFO, "decoder: Closing");
     } catch (std::exception& e) {
         LOG(logger, LOG_ERROR, "decoder: Error: %s", e.what());
+        send_status(frame::DecoderPanic);
     }
 
     send_status(frame::DecoderExit);
 }
 
 void decoder_service::loop(zmq::pollitem_t items[], size_t length) {
-    zmq::poll(items, 1, -1);
+    zmq::poll(items, length, -1);
 
     if (MANAGEMENT(items).revents & ZMQ_POLLIN) {
         frame::invoke_handler(management, handlers);

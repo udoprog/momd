@@ -31,5 +31,4 @@ private:
     bool stopped;
 };
 
-
 #endif /*  __DECODER_SERVICE__ */

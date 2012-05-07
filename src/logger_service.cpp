@@ -34,8 +34,10 @@ void logger_service::run()
         {logger_input, 0, ZMQ_POLLIN, 0}
     };
 
+    size_t items_size = sizeof(items) / sizeof(zmq::pollitem_t);
+
     while (!stopped) {
-        loop(items, sizeof(items) / sizeof(zmq::pollitem_t));
+        loop(items, items_size);
     }
 }
 
@@ -57,8 +59,8 @@ void logger_service::receive_and_print_log()
 {
     zmq::message_t message;
     logger_input.recv(&message);
-    std::string log_message((const char*)message.data(), message.size());
-    std::cout << "LOG: " << log_message << std::endl;
+    std::string log_string((const char*)message.data(), message.size());
+    std::cout << "LOG: " << log_string << std::endl;
 }
 
 logger_service::~logger_service()

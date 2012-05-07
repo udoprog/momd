@@ -15,9 +15,10 @@
 #include <libconfig.h++>
 #include <zmq.hpp>
 
-#include <iostream>
 #include <thread>
 #include <stdexcept>
+
+#include <iostream>
 
 void output_event_loop(zmq::context_t* context, libconfig::Config* config)
 {
@@ -99,7 +100,7 @@ void main_event_loop(libconfig::Config& config, zmq::context_t& context)
 #include <signal.h>
 #include <stdlib.h>
 
-void handler(int sig) {
+void traceback_handler(int sig) {
     void *array[10];
     size_t size;
 
@@ -112,10 +113,16 @@ void handler(int sig) {
     exit(1);
 }
 
+void kill_handler(int sig) {
+    std::cout << "KILLED" << std::endl;
+    exit(1);
+}
+
 int main(int argc, char* argv[])
 {
-    signal(SIGSEGV, handler);
-    signal(SIGABRT, handler);
+    signal(SIGSEGV, traceback_handler);
+    signal(SIGABRT, traceback_handler);
+    signal(SIGINT, kill_handler);
 
     const char* program_name = argv[0];
 
@@ -127,12 +134,14 @@ int main(int argc, char* argv[])
     libconfig::Config config;
     read_config(config, argv[1]);
 
-    initialize_plugins(config);
-
     zmq::context_t context(1);
 
-    /* global initialization of some input libraries (yay!) */
+    /* global initialization of plugins */
+    initialize_plugins(config);
+
+    /* global initialization of input/output */
     initialize_input();
+    initialize_output();
 
     main_event_loop(config, context);
     return 0;

@@ -8,10 +8,10 @@ class Status(FrameBase):
     fields = [
         "playing",
         "decoder_ready",
-        "decoder_requested_frames"
+        "output_pending_frames"
     ]
 
     def __init__(self):
         self.playing = False
         self.decoder_ready = False
-        self.decoder_requested_frames = 0
+        self.output_pending_frames = 0

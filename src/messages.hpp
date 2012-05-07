@@ -35,7 +35,8 @@ namespace frame {
     #define DECLARE_TEMPLATE(Id, Class) \
         const uint8_t Class::TYPE = Id; \
         template void convert_frame<Class>(frame_container*, Class*); \
-        template void send_frame<Class>(zmq::socket_t&, Class&);
+        template void send_frame<Class>(zmq::socket_t&, Class&);\
+        template void send_router_frame<Class>(zmq::socket_t&, const char*, Class&);
 
     typedef std::function<void(frame_container&)> frame_handle_function;
     typedef std::map<uint8_t, frame_handle_function> handle_map;
@@ -70,6 +71,12 @@ namespace frame {
     void send_frame(zmq::socket_t&, T&);
 
     /**
+     * Send a serialized reply on zmq socket.
+     */
+    template<typename T>
+    void send_router_frame(zmq::socket_t&, const char*, T&);
+
+    /**
      * Convenience temlpate to invoke frame handler from a map of handlers.
      */
     void invoke_handler(zmq::socket_t& socket, handle_map& handlers);
@@ -88,6 +95,13 @@ namespace frame {
     public:
         MSGPACK_DEFINE()
         DECLARE_TYPE(Kill)
+    };
+
+    class Panic
+    {
+    public:
+        MSGPACK_DEFINE()
+        DECLARE_TYPE(Panic)
     };
 
     class Error
@@ -111,11 +125,11 @@ namespace frame {
     public:
         bool playing;
         bool decoder_ready;
-        int decoder_requested_frames;
+        int output_pending_frames;
 
         MSGPACK_DEFINE(playing,
                 decoder_ready,
-                decoder_requested_frames)
+                output_pending_frames)
 
         DECLARE_TYPE(Status)
     };
@@ -155,13 +169,13 @@ namespace frame {
      *
      * path - Path to the next song to be played.
      */
-    class DecoderNext
+    class DecoderNextSong
     {
     public:
         std::string path;
 
         MSGPACK_DEFINE(path)
-        DECLARE_TYPE(DecoderNext)
+        DECLARE_TYPE(DecoderNextSong)
     };
 
     class DecoderRequestFrame
@@ -171,28 +185,16 @@ namespace frame {
         DECLARE_TYPE(DecoderRequestFrame)
     };
 
-    class DecoderInitialize
-    {
-    public:
-        MSGPACK_DEFINE()
-        DECLARE_TYPE(DecoderInitialize)
-    };
-
-    class DecoderError
-    {
-    public:
-        MSGPACK_DEFINE()
-        DECLARE_TYPE(DecoderError)
-    };
-
     /**
      * Various decoder status that can be sent down the line.
      */
     enum DecoderStatusType {
-        DecoderEndSong,
         DecoderReady,
+        DecoderExit,
+        DecoderPanic,
+        DecoderEndSong,
         DecoderFrameDropped,
-        DecoderExit
+        DecoderBusy
     };
 
     class DecoderStatus
@@ -208,7 +210,9 @@ namespace frame {
     };
 
     enum MedialibStatusType {
-        MedialibExit
+        MedialibReady,
+        MedialibExit,
+        MedialibPanic
     };
 
     class MedialibStatus
@@ -227,8 +231,10 @@ namespace frame {
      * Various decoder status that can be sent down the line.
      */
     enum OutputStatusType {
-        OutputFrameReceived,
-        OutputExit
+        OutputReady,
+        OutputExit,
+        OutputPanic,
+        OutputFrameReceived
     };
 
     class OutputStatus
@@ -243,14 +249,14 @@ namespace frame {
         DECLARE_TYPE(OutputStatus)
     };
 
-    class MedialibRequestNext
+    class MedialibRequestNextSong
     {
     public:
         MSGPACK_DEFINE()
         DECLARE_TYPE(MedialibRequestNext)
     };
 
-    class MedialibNext
+    class MedialibNextSong
     {
     public:
         std::string path;

@@ -5,6 +5,7 @@
 #include "messages.hpp"
 
 #include <stdexcept>
+#include <cstring>
 
 namespace frame {
     invoke_exception::invoke_exception(const char* message)
@@ -114,6 +115,17 @@ namespace frame {
         socket.send (reply);
     }
 
+    template<typename T>
+    void send_router_frame(zmq::socket_t& socket, const char* target, T& frame)
+    {
+        size_t length = ::strlen(target);
+        zmq::message_t identity(length);
+        ::memcpy(identity.data(), target, length);
+        socket.send(identity, ZMQ_SNDMORE);
+        send_frame(socket, frame);
+    }
+
+
     DECLARE_TEMPLATE(0x01, Ping)
     DECLARE_TEMPLATE(0x02, Pong)
     DECLARE_TEMPLATE(0x04, RequestStatus)
@@ -123,14 +135,14 @@ namespace frame {
     DECLARE_TEMPLATE(0x80, Error)
     DECLARE_TEMPLATE(0x90, Ok)
     DECLARE_TEMPLATE(0x09, Kill)
+    DECLARE_TEMPLATE(0x90, Panic)
 
     /**
      * Decode frames.
      */
-    DECLARE_TEMPLATE(0x21, DecoderNext)
-    DECLARE_TEMPLATE(0x22, DecoderInitialize)
-    DECLARE_TEMPLATE(0x40, DecoderError)
+    DECLARE_TEMPLATE(0x21, DecoderNextSong)
     DECLARE_TEMPLATE(0x41, DecoderStatus)
+    DECLARE_TEMPLATE(0x42, DecoderRequestFrame)
 
     DecoderStatus::DecoderStatus()
         : status(0)
@@ -141,8 +153,6 @@ namespace frame {
         : status(status)
     {
     }
-
-    DECLARE_TEMPLATE(0x42, DecoderRequestFrame)
 
     DECLARE_TEMPLATE(0x51, OutputStatus)
 
@@ -156,8 +166,8 @@ namespace frame {
     {
     }
 
-    DECLARE_TEMPLATE(0x60, MedialibRequestNext)
-    DECLARE_TEMPLATE(0x61, MedialibNext)
+    DECLARE_TEMPLATE(0x60, MedialibRequestNextSong)
+    DECLARE_TEMPLATE(0x61, MedialibNextSong)
 
     DECLARE_TEMPLATE(0x71, MedialibStatus)
 

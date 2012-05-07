@@ -12,7 +12,7 @@
 #define MANAGEMENT(items) items[1]
 
 output_service::output_service(zmq::context_t* context, output_base_ptr output)
-    : management(*context, ZMQ_PAIR),
+    : management(*context, ZMQ_DEALER),
       output_data(*context, ZMQ_PULL),
       logger(*context, ZMQ_PUSH),
       output(output),
@@ -23,7 +23,9 @@ output_service::output_service(zmq::context_t* context, output_base_ptr output)
     using namespace frame;
     using std::bind;
 
-    management.connect("inproc://output");
+    management.setsockopt(ZMQ_IDENTITY, "output", 6);
+    management.connect("inproc://services");
+
     output_data.connect("inproc://output/data");
     logger.connect("inproc://logger");
 
@@ -46,7 +48,6 @@ void output_service::kill(frame::frame_container& container)
 
 void output_service::send_status(frame::OutputStatusType status_type)
 {
-    LOG(logger, LOG_INFO, "output: OutputStatus(%02x)", status_type)
     frame::OutputStatus status(status_type);
     send_frame(management, status);
 }
@@ -71,12 +72,17 @@ void output_service::run()
         {management, 0, ZMQ_POLLIN, 0}
     };
 
+    size_t items_size = sizeof(items) / sizeof(zmq::pollitem_t);
+
     try {
+        send_status(frame::OutputReady);
+
         while (!stopped) {
-            loop(items, sizeof(items) / sizeof(zmq::pollitem_t));
+            loop(items, items_size);
         }
     } catch (std::exception& e) {
         LOG(logger, LOG_ERROR, "output: Error: %s", e.what());
+        send_status(frame::OutputPanic);
     }
 
     LOG(logger, LOG_INFO, "output: Closing");

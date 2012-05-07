@@ -19,7 +19,7 @@ private:
     void send_status(frame::MedialibStatusType status_type);
 
     void kill(frame::frame_container& container);
-    void request_next(frame::frame_container& container);
+    void request_next_song(frame::frame_container& container);
 
     void loop(zmq::pollitem_t items[], size_t length);
 

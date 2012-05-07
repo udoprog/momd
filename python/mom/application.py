@@ -26,7 +26,7 @@ def action_status(opts):
 
     print u"Playing:", status.playing
     print u"Decoder Ready:", status.decoder_ready
-    print u"Decoder Requested Frames:", status.decoder_requested_frames
+    print u"Decoder Requested Frames:", status.output_pending_frames
 
 actions = dict()
 actions["kill"] = action_kill
