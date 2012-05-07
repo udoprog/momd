@@ -91,8 +91,6 @@ void main_event_loop(libconfig::Config& config, zmq::context_t& context)
     output_thread.join();
 
     logger.stop();
-
-    logger_thread.join();
 }
 
 #include <stdio.h>
