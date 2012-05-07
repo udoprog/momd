@@ -2,7 +2,6 @@
 #define __MAIN_SERVICE__
 
 #include "messages.hpp"
-#include "service.hpp"
 
 #include <libconfig.h++>
 #include <zmq.hpp>
