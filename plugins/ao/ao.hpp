@@ -26,6 +26,7 @@ private:
   int driver;
   ao_device* device;
   ao_sample_format format;
+  ao_option* options;
 
   const char* server;
   const char* name;

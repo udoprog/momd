@@ -62,40 +62,69 @@ output_ao::~output_ao()
 
 void output_ao::setup(libconfig::Setting& setting)
 {
-  int channels;
-  int rate;
-  int bps;
-  std::string driver;
+    int channels;
+    int rate;
+    int bps;
+    std::string driver;
+    
+    if (setting.lookupValue("channels", channels)) {
+        setting.remove("channels");
+        format.channels = channels;
+    }
+    else {
+        format.channels = DEFAULT_GLOBAL_CHANNELS;
+    }
+    
+    if (setting.lookupValue("rate", rate)) {
+        setting.remove("rate");
+        format.rate = rate;
+    }
+    else {
+        format.rate = 44100;
+    }
+    
+    if (setting.lookupValue("bps", bps)) {
+        setting.remove("bps");
+        format.bits = bps;
+    }
+    else {
+        format.bits = 16;
+    }
+    
+    format.byte_format = AO_FMT_LITTLE;
+    
+    if (setting.lookupValue("driver", driver)) {
+        setting.remove("driver");
+        driver = ao_driver_id(driver.c_str());
+    }
+    else {
+        driver = ao_default_driver_id();
+    }
+    
+    int length = setting.getLength();
 
-  if (setting.lookupValue("channels", channels)) {
-    format.channels = channels;
-  }
-  else {
-    format.channels = DEFAULT_GLOBAL_CHANNELS;
-  }
+    ao_option *current = NULL;
+    
+    for (int i = 0; i < length; i++) {
+        libconfig::Setting& s = setting[i];
 
-  if (setting.lookupValue("rate", rate)) {
-    format.rate = rate;
-  }
-  else {
-    format.rate = 44100;
-  }
+        if (current == NULL) {
+            current = new ao_option;
+            options = current;
+        }
+        else {
+            current->next = new ao_option;
+        }
 
-  if (setting.lookupValue("bps", bps)) {
-    format.bits = bps;
-  }
-  else {
-    format.bits = 16;
-  }
+        std::string key = s.getName();
+        std::string value = s;
 
-  format.byte_format = AO_FMT_LITTLE;
+        current->key = new char[key.size() + 1];
+        current->value = new char[value.size() + 1];
 
-  if (setting.lookupValue("driver", driver)) {
-      driver = ao_driver_id(driver.c_str());
-  }
-  else {
-      driver = ao_default_driver_id();
-  }
+        ::strncpy(current->key, key.c_str(), key.size());
+        ::strncpy(current->value, value.c_str(), value.size());
+    }
 }
 
 void output_ao::close()
@@ -118,7 +147,7 @@ void output_ao::open()
         return;
     }
 
-    device = ao_open_live(driver, &format, NULL);
+    device = ao_open_live(driver, &format, options);
 
     if (device == NULL) {
         throw output_error(ao_strerror(errno));
