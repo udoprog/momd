@@ -5,6 +5,7 @@
 #include "output.hpp"
 #include "output_base.hpp"
 #include "pcm_packet.hpp"
+#include "messages.hpp"
 
 #include <functional>
 
@@ -54,15 +55,13 @@ void output_service::send_status(frame::OutputStatusType status_type)
 
 void output_service::recv_decoder_data()
 {
-    zmq::message_t message;
-    output_data.recv(&message);
+    LOG(logger, LOG_INFO, "output: received data");
 
-    pcm_packet::ptr pcm(
-            new pcm_packet((const char*)message.data(), message.size()));
+    pcm_packet::ptr pcm(new pcm_packet());
 
-    if (output) {
-        output->write(pcm);
-    }
+    frame::receive_msgpack(output_data, pcm.get());
+
+    output->write(pcm);
 }
 
 void output_service::run()
@@ -75,6 +74,10 @@ void output_service::run()
     size_t items_size = sizeof(items) / sizeof(zmq::pollitem_t);
 
     try {
+        frame::OutputFormat format;
+        format.format = output->format();
+        send_frame(management, format);
+
         send_status(frame::OutputReady);
 
         while (!stopped) {

@@ -8,6 +8,7 @@
 
 #include <memory>
 
+class pcm_format;
 class pcm_packet;
 
 class output_ao : public output_base {
@@ -20,12 +21,12 @@ public:
   virtual bool is_open();
   virtual void close();
   virtual void write(std::shared_ptr<pcm_packet>);
-  pcm_info info();
+  pcm_format format();
 
 private:
-  int driver;
+  int driver_id;
+  ao_sample_format sample_format;
   ao_device* device;
-  ao_sample_format format;
   ao_option* options;
 
   const char* server;

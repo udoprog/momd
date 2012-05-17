@@ -1,6 +1,8 @@
 #ifndef __MESSAGES_HPP__
 #define __MESSAGES_HPP__
 
+#include "pcm_format.hpp"
+
 #include <msgpack.hpp>
 #include <zmq.hpp>
 #include <vector>
@@ -69,6 +71,45 @@ namespace frame {
      */
     template<typename T>
     void send_frame(zmq::socket_t&, T&);
+
+    /**
+     * Send a normal msgpack type.
+     */
+    template<typename T>
+    void send_msgpack(zmq::socket_t& socket, T& object)
+    {
+        // serialize container
+        msgpack::sbuffer object_buffer;
+        msgpack::pack(object_buffer, object);
+
+        // send container as a reply
+        zmq::message_t reply (object_buffer.size());
+        memcpy (reply.data(), object_buffer.data(), object_buffer.size());
+        socket.send (reply);
+    }
+
+    /**
+     * Send a normal msgpack type.
+     */
+    template<typename T>
+    void receive_msgpack(zmq::socket_t& socket, T* object)
+    {
+        // receive message.
+        zmq::message_t message;
+        socket.recv(&message);
+
+        msgpack::unpacked msg;
+
+        try {
+            msgpack::unpack(&msg, (const char*)message.data(), message.size()); 
+        } catch (msgpack::unpack_error& error) {
+            throw frame_exception("unpack message failed");
+        }
+
+        msgpack::object obj = msg.get();
+
+        obj.convert(object);
+    }
 
     /**
      * Send a serialized reply on zmq socket.
@@ -173,8 +214,9 @@ namespace frame {
     {
     public:
         std::string path;
+        pcm_format format;
 
-        MSGPACK_DEFINE(path)
+        MSGPACK_DEFINE(path, format)
         DECLARE_TYPE(DecoderNextSong)
     };
 
@@ -249,6 +291,15 @@ namespace frame {
         DECLARE_TYPE(OutputStatus)
     };
 
+    class OutputFormat
+    {
+    public:
+        pcm_format format;
+
+        MSGPACK_DEFINE(format)
+        DECLARE_TYPE(OutputFormat)
+    };
+
     class MedialibRequestNextSong
     {
     public:
@@ -260,6 +311,7 @@ namespace frame {
     {
     public:
         std::string path;
+
         MSGPACK_DEFINE(path)
         DECLARE_TYPE(MedialibRequestNext)
     };

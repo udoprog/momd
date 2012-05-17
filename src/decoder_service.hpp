@@ -18,7 +18,6 @@ private:
     void kill(frame::frame_container& container);
     void next_song(frame::frame_container& container);
     void decoder_request_frame(frame::frame_container& container);
-    void decoder_initialize(frame::frame_container& container);
     void send_status(frame::DecoderStatusType status_type);
 
     void loop(zmq::pollitem_t items[], size_t length);

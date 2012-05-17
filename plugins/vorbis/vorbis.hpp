@@ -9,7 +9,7 @@
 #include <memory>
 
 class pcm_meta;
-class pcm_info;
+class pcm_format;
 class pcm_packet;
 
 void initialize_vorbis();
@@ -19,21 +19,25 @@ public:
   input_vorbis();
   ~input_vorbis();
 
-  virtual void open(std::string path);
+  virtual void open(std::string path, pcm_format);
   virtual void close();
   virtual void seek(double pos);
-  virtual pcm_meta tell();
+  virtual pcm_position tell();
   virtual double length();
 
-  virtual pcm_info info();
   virtual std::shared_ptr<pcm_packet> readsome();
 private:
-  int _bitstream;
-  int _endian;
-  double _length;
+  int vf_bitstream;
+  double vf_length;
 
-  std::shared_ptr<vorbis_info> _info;
-  std::shared_ptr<OggVorbis_File> _oggfile;
+  int bigendianp;
+  int word;
+  int sgned;
+
+  pcm_format current_format;
+
+  std::shared_ptr<vorbis_info> vf_info;
+  std::shared_ptr<OggVorbis_File> vf_oggfile;
 };
 
 #endif /* __INPUT_VORBIS_HPP__ */

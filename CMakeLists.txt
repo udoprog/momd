@@ -20,9 +20,10 @@ set(momd_SOURCES
   src/output_error.cpp
   src/output_service.cpp
   src/logger_service.cpp
-  src/pcm_info.cpp
+  src/pcm_format.cpp
   src/pcm_packet.cpp
   src/plugin.cpp
+  src/audio_type.cpp
   )
 
 find_package(Boost 1.46 COMPONENTS filesystem system REQUIRED)

@@ -154,6 +154,7 @@ namespace frame {
     {
     }
 
+    DECLARE_TEMPLATE(0x52, OutputFormat)
     DECLARE_TEMPLATE(0x51, OutputStatus)
 
     OutputStatus::OutputStatus()

@@ -2,11 +2,14 @@
 
 #include "output_error.hpp"
 #include "plugin.hpp"
-#include "pcm_info.hpp"
+#include "pcm_format.hpp"
 #include "pcm_packet.hpp"
 
 #include "config.hpp"
+
 #include <cstring>
+
+#include <libconfig.h++>
 
 output_base* pulse__new();
 void pulse__initialize();
@@ -38,25 +41,23 @@ output_pulse::~output_pulse()
 
 void output_pulse::setup(libconfig::Setting& setting)
 {
-  _spec.reset(new pa_sample_spec);
-
-  _spec->format = PA_SAMPLE_S16LE;
+  spec.format = PA_SAMPLE_S16LE;
 
   int channels;
   int rate;
 
   if (setting.lookupValue("channels", channels)) {
-    _spec->channels = channels;
+    spec.channels = channels;
   }
   else {
-    _spec->channels = DEFAULT_GLOBAL_CHANNELS;
+    spec.channels = DEFAULT_GLOBAL_CHANNELS;
   }
 
   if (setting.lookupValue("rate", rate)) {
-    _spec->rate = rate;
+    spec.rate = rate;
   }
   else {
-    _spec->rate = 44100;
+    spec.rate = 44100;
   }
 
   if (!setting.lookupValue("server", this->server))  {
@@ -76,10 +77,7 @@ void output_pulse::setup(libconfig::Setting& setting)
 
 void output_pulse::close()
 {
-  int error;
-
   if (simple != NULL) {
-    pa_simple_drain(simple, &error);
     pa_simple_free(simple);
     simple = NULL;
   }
@@ -96,13 +94,9 @@ void output_pulse::open()
     return;
   }
 
-  if (!_spec) {
-    throw output_error("pulseaudio not setup");
-  }
-
   int error;
 
-  simple = pa_simple_new(this->server, this->name, PA_STREAM_PLAYBACK, NULL, this->stream, _spec.get(), NULL, NULL, &error);
+  simple = pa_simple_new(this->server, this->name, PA_STREAM_PLAYBACK, NULL, this->stream, &spec, NULL, NULL, &error);
 
   if (simple == NULL)
   {
@@ -110,14 +104,13 @@ void output_pulse::open()
   }
 }
 
-pcm_info output_pulse::info()
+pcm_format output_pulse::format()
 {
-  pcm_info info;
-  info.endian = PCM_LE;
-  info.rate = _spec->rate;
-  info.channels = _spec->channels;
-  info.bps = 16;
-  return info;
+  pcm_format format;
+  format.encoding = PCM_SIGNED_16;
+  format.rate = spec.rate;
+  format.channels = spec.channels;
+  return format;
 }
 
 void output_pulse::write(pcm_packet::ptr pcm)

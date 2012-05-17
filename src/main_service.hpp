@@ -27,6 +27,7 @@ private:
     void decoder_error(frame::frame_container& container);
     void decoder_status(frame::frame_container& container);
     void output_status(frame::frame_container& container);
+    void output_format(frame::frame_container& container);
     void medialib_next_song(frame::frame_container& container);
     void medialib_status(frame::frame_container& container);
 
@@ -76,6 +77,11 @@ private:
      * Number of pending frames in output.
      */
     int output_pending_frames;
+
+    /*
+     * The requested output format.
+     */
+    pcm_format output_current_format;
 
     /*
      * Medialib is ready to receive requests.

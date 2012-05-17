@@ -23,11 +23,10 @@ public:
   virtual bool is_open();
   virtual void close();
   virtual void write(std::shared_ptr<pcm_packet>);
-  pcm_info info();
+  pcm_format format();
 
 private:
-  std::shared_ptr<pa_sample_spec> _spec;
-
+  pa_sample_spec spec;
   pa_simple* simple;
 
   const char* server;

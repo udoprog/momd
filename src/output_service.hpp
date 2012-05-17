@@ -18,6 +18,7 @@ private:
     void send_status(frame::OutputStatusType status_type);
 
     void kill(frame::frame_container& container);
+    void output_request_format(frame::frame_container& container);
 
     void recv_decoder_data();
     void loop(zmq::pollitem_t items[], size_t length);

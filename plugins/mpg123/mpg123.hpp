@@ -8,37 +8,32 @@
 #include <mpg123.h>
 
 class pcm_meta;
-class pcm_info;
+class pcm_format;
 class pcm_packet;
 class input_base;
 
 class input_mpg123 : public input_base {
 public:
-  input_mpg123();
-  ~input_mpg123();
-
-  virtual void open(std::string path);
-  virtual void close();
-  virtual void seek(double pos);
-  virtual pcm_meta tell();
-  virtual double length();
-
-  virtual pcm_info info();
-  virtual std::shared_ptr<pcm_packet> readsome();
+    input_mpg123();
+    ~input_mpg123();
+   
+    virtual void open(std::string path, pcm_format);
+    virtual void close();
+    virtual void seek(double pos);
+    virtual pcm_position tell();
+    virtual double length();
+   
+    virtual std::shared_ptr<pcm_packet> readsome();
 private:
-  void read_metadata();
-
-  mpg123_handle* handle;
-
-  int _channels;
-  long int _rate;
-  int _encoding;
-  double _length;
-
-  unc::ustring title;
-  unc::ustring artist;
-  unc::ustring album;
-  unc::ustring year;
+    void update_current_format();
+    void read_metadata();
+    mpg123_handle* handle;
+    pcm_format current_format;
+   
+    unc::ustring title;
+    unc::ustring artist;
+    unc::ustring album;
+    unc::ustring year;
 };
 
 void initialize_mpg123();

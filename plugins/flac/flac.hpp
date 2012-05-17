@@ -8,8 +8,9 @@
 #include <memory>
 
 class pcm_meta;
-class pcm_info;
+class pcm_format;
 class pcm_packet;
+class pcm_position;
 
 void initialize_flac();
 
@@ -28,25 +29,21 @@ public:
   input_flac();
   ~input_flac();
 
-  virtual void open(std::string path);
+  virtual void open(std::string path, pcm_format);
   virtual void close();
   virtual void seek(double pos);
-  virtual pcm_meta tell();
+  virtual pcm_position tell();
   virtual double length();
 
-  virtual pcm_info info();
   virtual std::shared_ptr<pcm_packet> readsome();
 
-  virtual FLAC__StreamDecoderWriteStatus write_callback(const ::FLAC__Frame *frame, const FLAC__int32 * const buffer[]);
+  virtual FLAC__StreamDecoderWriteStatus write_callback(const ::FLAC__Frame *, const FLAC__int32 * const[]);
   virtual void metadata_callback(const ::FLAC__StreamMetadata *metadata);
   virtual void error_callback(::FLAC__StreamDecoderErrorStatus status);
 private:
-  char* _buffer;
-  int _size;
-  FLAC__uint64 _total_samples;
-  unsigned _sample_rate;
-  unsigned _channels;
-  unsigned _bps;
+  char* buffer;
+  FLAC__uint64 total_samples;
+  pcm_format current_format;
 };
 
 #endif /* __INPUT_FLAC_HPP__ */

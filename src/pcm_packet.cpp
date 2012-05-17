@@ -2,25 +2,32 @@
 
 #include <cstring>
 
-pcm_packet::pcm_packet(const char* data, int size)
+pcm_packet::pcm_packet(pcm_format format, const char* data, int size)
 {
-  char* d = new char[size];
-  std::memcpy(d, data, size);
-  this->_data = d;
-  this->_size = size;
+  std::string string_data(data, size);
+  this->_format = format;
+  this->_data = string_data;
+}
+
+pcm_packet::pcm_packet()
+{
+}
+
+pcm_format pcm_packet::format()
+{
+    return _format;
 }
 
 const char* pcm_packet::data()
 {
-    return _data;
+    return _data.c_str();
 }
 
-int pcm_packet::size()
+size_t pcm_packet::size()
 {
-    return _size;
+    return _data.size();
 }
 
 pcm_packet::~pcm_packet()
 {
-  delete[] this->_data;
 }

@@ -56,8 +56,9 @@ void decoder_service::next_song(frame::frame_container& container) {
     convert_frame(&container, &next_song);
 
     try {
-        input = open_path(next_song.path);
+        input = open_path(next_song.path, next_song.format);
     } catch (std::exception& e) {
+        LOG(logger, LOG_ERROR, "decoder: Error: %s", e.what())
         send_status(frame::DecoderEndSong);
         return;
     }
@@ -82,15 +83,7 @@ void decoder_service::decoder_request_frame(frame::frame_container& container) {
         return;
     }
 
-    zmq::message_t message(pcm->size());
-    ::memcpy(message.data(), pcm->data(), pcm->size());
-    decoder_data.send(message);
-}
-
-void decoder_service::decoder_initialize(frame::frame_container& container) {
-    LOG(logger, LOG_DEBUG, "decoder: DecoderInitialize");
-
-    send_status(frame::DecoderEndSong);
+    frame::send_msgpack(decoder_data, *pcm.get());
 }
 
 void decoder_service::send_status(frame::DecoderStatusType status_type) {

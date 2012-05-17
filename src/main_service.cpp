@@ -64,6 +64,9 @@ main_service::main_service(zmq::context_t& context)
     service_handlers[OutputStatus::TYPE] =
         bind(&main_service::output_status, this, _1);
 
+    service_handlers[OutputFormat::TYPE] =
+        bind(&main_service::output_format, this, _1);
+
     service_handlers[MedialibNextSong::TYPE] =
         bind(&main_service::medialib_next_song, this, _1);
 
@@ -212,6 +215,15 @@ void main_service::output_status(frame::frame_container& container)
     }
 }
 
+void main_service::output_format(frame::frame_container& container)
+{
+    LOG(logger, LOG_DEBUG, "main: OutputFormat")
+
+    frame::OutputFormat format;
+    convert_frame(&container, &format);
+    output_current_format = format.format;
+}
+
 void main_service::medialib_next_song(frame::frame_container& container)
 {
     LOG(logger, LOG_DEBUG, "main: MedialibNextSong")
@@ -223,6 +235,7 @@ void main_service::medialib_next_song(frame::frame_container& container)
 
     frame::DecoderNextSong next_song;
     next_song.path = next.path;
+    next_song.format = output_current_format;
     frame::send_router_frame(services, "decoder", next_song);
 
     decoder_pending_next_song = true;

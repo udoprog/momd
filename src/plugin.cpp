@@ -3,6 +3,7 @@
 
 #include <boost/filesystem.hpp>
 #include <deque>
+#include <libconfig.h++>
 
 std::vector<plugin_spec*> input_plugins;
 std::vector<plugin_spec*> output_plugins;

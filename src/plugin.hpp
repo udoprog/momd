@@ -1,7 +1,7 @@
 #ifndef __PLUGIN__
 #define __PLUGIN__
 
-#include <libconfig.h++>
+#include "audio_type.hpp"
 
 #define INPUT_PLUGIN 'I'
 #define OUTPUT_PLUGIN 'O'
@@ -9,10 +9,14 @@
 class output_base;
 class input_base;
 
+namespace libconfig {
+    class Config;
+}
+
 typedef output_base*(*output_new_t)();
 typedef void(*output_initialize_t)();
 typedef input_base*(*input_new_t)();
-typedef bool(*input_check_t)(const char* path, const char* ext);
+typedef bool(*input_check_t)(audio_type);
 typedef void(*input_initialize_t)();
 
 struct input_plugin_spec {

@@ -2,12 +2,41 @@
 
 #include "plugin.hpp"
 #include "input_error.hpp"
-#include "pcm_meta.hpp"
+#include "pcm_position.hpp"
 #include "pcm_packet.hpp"
+#include "audio_type.hpp"
 
 input_base* mpg123__new();
 void mpg123__initialize();
-bool mpg123__check(const char* path, const char* ext);
+bool mpg123__check(audio_type);
+
+int from_mpg123_encoding(int encoding)
+{
+    switch (encoding) {
+    case MPG123_ENC_SIGNED_16:
+        return PCM_SIGNED_16;
+    case MPG123_ENC_SIGNED_32:
+        return PCM_SIGNED_32;
+    case MPG123_ENC_FLOAT_32:
+        return PCM_FLOAT_32;
+    default:
+        throw input_error("mpg123: unsupported input encoding");
+    }
+}
+
+int to_mpg123_encoding(int encoding)
+{
+    switch (encoding) {
+    case PCM_SIGNED_16:
+        return MPG123_ENC_SIGNED_16;
+    case PCM_SIGNED_32:
+        return MPG123_ENC_SIGNED_32;
+    case PCM_FLOAT_32:
+        return MPG123_ENC_FLOAT_32;
+    default:
+        throw input_error("mpg123: unsupported input encoding");
+    }
+}
 
 input_plugin_spec mpg123_spec = {
         &mpg123__initialize,
@@ -34,20 +63,16 @@ void mpg123__initialize()
 std::string mp3_ext(".mp3");
 std::string mp4_ext(".mp4");
 
-bool mpg123__check(const char* path, const char* ext)
+bool mpg123__check(audio_type type)
 {
-    std::string string_path(path);
-    std::string string_ext(ext);
-
-    if (mp3_ext.compare(string_ext) == 0) {
+    switch (type) {
+    case AUDIO_TYPE_MP3:
         return true;
-    }
-
-    if (mp4_ext.compare(string_ext) == 0) {
+    case AUDIO_TYPE_M4A:
         return true;
+    default:
+        return false;
     }
-
-    return false;
 }
 
 template<unc::encoding_t encoding>
@@ -73,8 +98,7 @@ unc::ustring decode_byte_string(const char* string)
 }
 
 input_mpg123::input_mpg123()
-    : handle(NULL), _channels(0), _rate(0), _encoding(0),
-      _length(0.0)
+    : handle(NULL), current_format()
 {
 }
 
@@ -118,10 +142,9 @@ input_mpg123::~input_mpg123()
     }
 }
 
-void input_mpg123::open(std::string path)
+void input_mpg123::open(std::string path, pcm_format format)
 {
     int err;
-    int encoding;
     handle = mpg123_new(NULL, &err);
 
     if (handle == NULL) {
@@ -132,26 +155,23 @@ void input_mpg123::open(std::string path)
         throw input_error(mpg123_plain_strerror(err));
     }
 
-    if ((err = mpg123_getformat(handle, &_rate, &_channels, &encoding)) != MPG123_OK) {
+    if ((err = mpg123_getformat(handle, NULL, NULL, NULL)) != MPG123_OK) {
         throw input_error(mpg123_plain_strerror(err));
     }
 
     read_metadata();
 
     /* force 16 bit format */
-    encoding = MPG123_ENC_SIGNED_16;
+    int encoding = to_mpg123_encoding(format.encoding);
 
     mpg123_format_none(handle);
-    mpg123_format(handle, _rate, _channels, encoding);
 
-    double seconds_left;
-
-    if ((err = mpg123_position(handle, 0, 0, NULL, NULL, NULL, &seconds_left)) != MPG123_OK) {
+    if ((err = mpg123_format(handle, format.rate, format.channels, encoding)) != MPG123_OK)
+    {
         throw input_error(mpg123_plain_strerror(err));
     }
 
-    this->_encoding = encoding;
-    this->_length = seconds_left;
+    current_format = format;
 }
 
 void input_mpg123::close()
@@ -172,7 +192,7 @@ void input_mpg123::seek(double pos)
     }
 }
 
-pcm_meta input_mpg123::tell()
+pcm_position input_mpg123::tell()
 {
     int err;
     double seconds;
@@ -181,7 +201,7 @@ pcm_meta input_mpg123::tell()
         throw input_error(mpg123_plain_strerror(err));
     }
 
-    pcm_meta meta;
+    pcm_position meta;
     meta.current = seconds;
     meta.length = seconds + 100;
 
@@ -190,34 +210,52 @@ pcm_meta input_mpg123::tell()
 
 double input_mpg123::length()
 {
-    return _length;
+    return 0;
 }
 
-pcm_info input_mpg123::info()
+void input_mpg123::update_current_format()
 {
-    pcm_info info;
-    info.rate = _rate;
-    info.channels = _channels;
-    info.endian = PCM_LE;
-    info.bps = 16;
-    return info;
+    long rate;
+    int channels;
+    int encoding;
+
+    mpg123_getformat(handle, &rate, &channels, &encoding);
+
+    pcm_format format;
+    format.rate = rate;
+    format.encoding = from_mpg123_encoding(encoding);
+    format.channels = channels;
+
+    current_format = format;
 }
 
 pcm_packet::ptr input_mpg123::readsome()
 {
     unsigned char buffer[1024 * 8];
-    int status;
+    int err;
     size_t done;
 
     pcm_packet::ptr pcm;
 
-    status = mpg123_read(handle, buffer, sizeof(buffer), &done);
+    err = mpg123_read(handle, buffer, sizeof(buffer), &done);
 
-    if (status != MPG123_OK) {
-        return pcm;
+    switch (err) {
+    case MPG123_NEW_FORMAT:
+        update_current_format();
+        break;
+    case MPG123_DONE:
+        /* stream is done */
+        break;
+    case MPG123_OK:
+        /* proceed as normal */
+        break;
+    default:
+        throw input_error(mpg123_plain_strerror(err));
     }
 
-    pcm.reset(new pcm_packet(reinterpret_cast<char*>(buffer), done));
+    const char* data = reinterpret_cast<const char*>(buffer);
+
+    pcm.reset(new pcm_packet(current_format, data, done));
     /*pcm->info.channels = _channels;
     pcm->info.rate = _rate;
     pcm->info.endian = PCM_LE;*/
